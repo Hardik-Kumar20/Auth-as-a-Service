@@ -31,7 +31,7 @@ class AuthService:
 
         new_user = User(
             email = data.email,
-            password_hash = hashed_pw,
+            hashed_password = hashed_pw,
             is_active = True
         )
 
@@ -51,40 +51,40 @@ class AuthService:
     
 
 
-@staticmethod
-async def login(data: UserLogin, db: AsyncSession):
-    result = await db.execute(select(User).where(User.email == data.email))
-    user = result.scalar_one_or_none()
+    @staticmethod
+    async def login(data: UserLogin, db: AsyncSession):
+        result = await db.execute(select(User).where(User.email == data.email))
+        user = result.scalar_one_or_none()
 
-    if not user:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = "User not found"
-        )
-    
-    if not verify_password(data.password, user.password_hash):
-        raise HTTPException(
-            status_code = status.HTTP_404_BAD_REQUEST,
-            detail = "Invalid password"
-        )
-    
-    access = create_access_token({"sub": user.id})
-    refresh = create_refresh_token({"sub": user.id})
+        if not user:
+            raise HTTPException(
+                status_code = status.HTTP_404_NOT_FOUND,
+                detail = "User not found"
+            )
+        
+        if not verify_password(data.password, user.password_hash):
+            raise HTTPException(
+                status_code = status.HTTP_404_BAD_REQUEST,
+                detail = "Invalid password"
+            )
+        
+        access = create_access_token({"sub": user.id})
+        refresh = create_refresh_token({"sub": user.id})
 
-    return {
-        "access_token": access,
-        "token_type": "bearer"
-    }
-
-@staticmethod
-async def refresh_token(token_data: RefreshTokenSchema):
-    payload = decode_token(token_data.refresh_token)
-    user_id = payload.get("sub")
-
-    new_access = create_access_token({"sub": user_id})
-    new_refresh = create_refresh_token({"sub": user_id})
-
-    return {
-            "access_token": new_access,
-            "refresh_token": new_refresh
+        return {
+            "access_token": access,
+            "token_type": "bearer"
         }
+
+    @staticmethod
+    async def refresh_token(token_data: RefreshTokenSchema):
+        payload = decode_token(token_data.refresh_token)
+        user_id = payload.get("sub")
+
+        new_access = create_access_token({"sub": user_id})
+        new_refresh = create_refresh_token({"sub": user_id})
+
+        return {
+                "access_token": new_access,
+                "refresh_token": new_refresh
+            }
