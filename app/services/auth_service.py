@@ -39,6 +39,9 @@ class AuthService:
         await db.commit()
         await db.refresh(new_user)
 
+        new_user.refresh_token_version += 1
+        await db.commit()
+        await db.refresh(new_user)
 
         access = create_access_token({"sub": new_user.id})
         refresh = create_refresh_token({"sub": new_user.id})
@@ -68,6 +71,10 @@ class AuthService:
                 detail = "Invalid password"
             )
         
+        user.refresh_token_version += 1
+        await db.commit()
+        await db.refresh(user)
+
         access = create_access_token({"sub": user.id})
         refresh = create_refresh_token({"sub": user.id})
 
@@ -76,15 +83,53 @@ class AuthService:
             "token_type": "bearer"
         }
 
-    @staticmethod
-    async def refresh_token(token_data: RefreshTokenSchema):
-        payload = decode_token(token_data.refresh_token)
-        user_id = payload.get("sub")
 
-        new_access = create_access_token({"sub": user_id})
-        new_refresh = create_refresh_token({"sub": user_id})
+    @staticmethod
+    async def refresh_token(token_data: RefreshTokenSchema, db: AsyncSession):
+        try:
+            payload = decode_refresh_token(token_data.refresh_token)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+            )
+
+        user_id = payload.get("sub")
+        token_version = payload.get("ver")
+
+        if user_id is None or token_version is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token payload",
+            )
+
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
+
+        # Check if token version matches
+        if user.refresh_token_version != token_version:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token has been revoked",
+            )
+
+        # Rotate version
+        user.refresh_token_version += 1
+        await db.commit()
+        await db.refresh(user)
+
+        new_access = create_access_token({"sub": user.id})
+        new_refresh = create_refresh_token(
+            {"sub": user.id, "ver": user.refresh_token_version}
+        )
 
         return {
-                "access_token": new_access,
-                "refresh_token": new_refresh
-            }
+            "access_token": new_access,
+            "refresh_token": new_refresh,
+            "token_type": "bearer",
+        }
