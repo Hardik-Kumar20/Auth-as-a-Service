@@ -2,10 +2,14 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+from app.api.routes.auth_routes import router as auth_router
 from app.db.session import get_db
 from app.core.config import settings
 
 app = FastAPI(title=settings.APP_NAME)
+
+
+app.include_router(auth_router)
 
 @app.get("/test-db")
 async def test_db_connection(db: AsyncSession = Depends(get_db)):
