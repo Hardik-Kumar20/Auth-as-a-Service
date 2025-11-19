@@ -8,7 +8,7 @@ from app.core.security import(
     verify_password,
     create_access_token,
     create_refresh_token,
-    decode_token
+    decode_refresh_token
 )
 
 from app.schemas.UserSchema import UserCreate, UserLogin, UserOut
@@ -44,7 +44,7 @@ class AuthService:
         await db.refresh(new_user)
 
         access = create_access_token({"sub": new_user.id})
-        refresh = create_refresh_token({"sub": new_user.id})
+        refresh = create_refresh_token({"sub": new_user.id, "ver": new_user.refresh_token_version})
 
         return{
             "access_token": access,
@@ -80,6 +80,7 @@ class AuthService:
 
         return {
             "access_token": access,
+            "refresh_token": refresh,
             "token_type": "bearer"
         }
 
