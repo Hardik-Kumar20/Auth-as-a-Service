@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from app.api.routes.auth_routes import router as auth_router
-from app.db.session import get_db
+from app.api.deps.db import get_db
 from app.core.config import settings
 
 app = FastAPI(title=settings.APP_NAME)

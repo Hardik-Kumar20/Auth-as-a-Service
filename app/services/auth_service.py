@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from app.schemas.UserSchema import RefreshTokenSchema
 
 from app.db.models.user import User
 from app.core.security import(
